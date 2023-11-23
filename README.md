@@ -3,6 +3,10 @@
 This project contains a script (upload_firmware.py) that can be used to upload
 a custom firmware binary to a STM32 board using PlatformIO in Visual Studio Code.
 
+Suported protocols:
+- ST Link
+- Mbed
+
 ### How to use ###
 
 1. Place the script and your firmware binary at the root of you PlatformIO project
@@ -15,7 +19,7 @@ extra_scripts = pre:upload_firmware.py
 4. Access the PlatformIO tab on the left of Visual Studio Code
 5. Select `<Your environment name>` => Platform => Upload custom firmware
 
-### Using from a subfolder
+#### Using from a subfolder ####
 
 You can also place the script and the firmware in a project subfolder.
 To do so, you have to adapt the syntax in the platformio.ini as follows:
@@ -25,4 +29,12 @@ extra_scripts = pre:path/to/this/script.py
 ~~~~
 Notes:
 - both files must be in the project
-- do not add a leading "/" to the path.
+- do not add a leading "./" to the path.
+
+### Choosing an upload protocol ###
+
+The upload method (stlink or mbed) is defined by the `upload_protocol`
+option of `platformio.ini`. If no protocol is defined, stlink will be
+use as a default. If another protocol is defined, the script will try
+stlink but will probably fail as part of the configuration is defined
+by PlatformIO and depends on this option.

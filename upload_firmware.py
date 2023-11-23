@@ -20,6 +20,10 @@ along with this file. If not, see <http://www.gnu.org/licenses/>.
 This script can be used to upload a custom firmware binary
 to a STM32 board using PlatformIO in Visual Studio Code.
 
+Suported protocols:
+- ST Link
+- Mbed
+
 ======================== How to use ========================
 
 1) Place this script and your firmware binary at the root of you PlatformIO project
@@ -37,7 +41,7 @@ import subprocess
 Import("env")
 
 
-def uploadCustomFirmware(target, source, env):
+def uploadWithStlink(firmware_path):
 	# Build uploader command line
 	platform = env.PioPlatform()
 	uploader_path = [platform.get_package_dir("tool-openocd") + "/bin/openocd"]
@@ -49,7 +53,6 @@ def uploadCustomFirmware(target, source, env):
 	upload_protocol = env.subst("$UPLOAD_PROTOCOL")
 	server_arguments = debug_tools.get(upload_protocol).get("server").get("arguments", [])
 
-	firmware_path = os.path.join(".", env.GetProjectOption("custom_firmware"))
 	firmware_address = board.get("upload.offset_address", "0x08000000")
 	program_arguments = ["-c", f"program {firmware_path} {firmware_address} verify reset; shutdown;"]
 
@@ -65,6 +68,45 @@ def uploadCustomFirmware(target, source, env):
 	# Display command and run it
 	print(command_line)
 	subprocess.run(command_line)
+
+def uploadWithMbed(firmware_path):
+	env.AutodetectUploadPort(env)
+
+	assert "UPLOAD_PORT" in env
+
+	from shutil import copyfile
+	copyfile(firmware_path, os.path.join(env.subst("$UPLOAD_PORT"), firmware_path))
+	print(
+		"Firmware has been successfully uploaded.\n"
+		"(Some boards may require manual hard reset)"
+	)
+
+def uploadCustomFirmware(target, source, env):
+	firmware_file = env.GetProjectOption("custom_firmware")
+	firmware_path = os.path.join(".", firmware_file)
+	if not os.path.isfile(firmware_path):
+		print(f"ERROR: unable to find firmware file '{firmware_file}'")
+		print("Please make sure file exists and parameter 'custom_firmware' is correctly set in the platformio.ini file")
+		exit(-1)
+
+	try:
+		protocol = env.GetProjectOption("upload_protocol")
+	except NoOptionError:
+		print("'upload_protocol' is not defined in 'platformio.ini'.")
+		print("Defaulting to ST Link for upload")
+		protocol = "stlink"
+
+	if protocol == "stlink":
+		print("ST Link will be used for upload")
+		uploadWithStlink(firmware_path)
+	elif protocol == "mbed":
+		print("Mbed will be used for upload")
+		uploadWithMbed(firmware_path)
+	else:
+		print("Unkown or unsuppored protocol.")
+		print("Defaulting to ST Link for upload")
+		uploadWithStlink(firmware_path)
+
 
 env.AddPlatformTarget(
     name="upload-custom-firmware",
